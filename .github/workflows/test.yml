@@ -1,0 +1,34 @@
+name: test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Write a sample config
+        run: |
+          cat > baseliner.yaml <<'YAML'
+          scope:
+            local:
+              paths: ["."]
+          policy:
+            base: default
+          YAML
+
+      # Use the action from this checkout. fail-under: 0 makes this a smoke test
+      # of "install + scan run", independent of this repo's own compliance.
+      - name: Run the baseliner action
+        uses: ./
+        with:
+          config: baseliner.yaml
+          format: table
+          fail-under: "0"

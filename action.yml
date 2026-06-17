@@ -1,0 +1,64 @@
+name: "baseliner"
+description: "Scan a fleet of repositories against a configurable baseline policy."
+author: "baselinerhq"
+branding:
+  icon: "check-square"
+  color: "green"
+
+inputs:
+  version:
+    description: "baseliner version to install (e.g. v0.2.0, or 'latest')."
+    default: "v0.2.0"
+  config:
+    description: "Path to the baseliner config file."
+    default: "baseliner.yaml"
+  format:
+    description: "Output format: json, table, or both."
+    default: "both"
+  output-file:
+    description: "Write JSON results to this file (optional)."
+    default: ""
+  sarif-file:
+    description: "Write SARIF 2.1.0 to this file (optional; upload it to code scanning)."
+    default: ""
+  fail-under:
+    description: "Exit 1 if any repo scores below this threshold, 0.0-1.0 (optional)."
+    default: ""
+  open-issues:
+    description: "Open/update a findings issue per repo (true/false)."
+    default: "false"
+  extra-args:
+    description: "Additional arguments appended to `baseliner scan` (optional)."
+    default: ""
+  working-directory:
+    description: "Directory to run the scan from."
+    default: "."
+  github-token:
+    description: "Token used for GitHub scanning and --open-issues (and to authenticate the install when version=latest)."
+    default: ${{ github.token }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install baseliner
+      shell: bash
+      env:
+        VERSION: ${{ inputs.version }}
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+      run: curl -fsSL https://raw.githubusercontent.com/baselinerhq/baseliner/main/scripts/install.sh | bash
+
+    - name: Run baseliner
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+      run: |
+        set -euo pipefail
+        args=(scan --config "${{ inputs.config }}" --format "${{ inputs.format }}")
+        [ -n "${{ inputs.output-file }}" ] && args+=(--output-file "${{ inputs.output-file }}")
+        [ -n "${{ inputs.sarif-file }}" ] && args+=(--sarif-file "${{ inputs.sarif-file }}")
+        [ -n "${{ inputs.fail-under }}" ] && args+=(--fail-under "${{ inputs.fail-under }}")
+        [ "${{ inputs.open-issues }}" = "true" ] && args+=(--open-issues)
+        # shellcheck disable=SC2206
+        [ -n "${{ inputs.extra-args }}" ] && args+=(${{ inputs.extra-args }})
+        "$HOME/.local/bin/baseliner" "${args[@]}"
