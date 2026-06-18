@@ -39,16 +39,28 @@ the install-script boilerplate.
 
 | Input | Default | Description |
 |-------|---------|-------------|
-| `version` | `v0.2.0` | baseliner version to install (or `latest`). |
+| `version` | `v0.2.1` | baseliner version to install (or `latest`). |
 | `config` | `baseliner.yaml` | Path to the config file. |
 | `format` | `both` | `json`, `table`, or `both`. |
 | `output-file` | — | Write JSON results here. |
 | `sarif-file` | — | Write SARIF 2.1.0 here (for code scanning). |
 | `fail-under` | — | Exit 1 if any repo scores below this (`0.0`–`1.0`). |
 | `open-issues` | `false` | Open/update a findings issue per repo. |
+| `public-context` | auto | Protect private/internal repos when the output is public. Empty auto-detects from this repo's visibility (on when public, off when private); set `true`/`false` to override. |
 | `extra-args` | — | Extra arguments appended to `baseliner scan`. |
 | `working-directory` | `.` | Directory to run from. |
 | `github-token` | `${{ github.token }}` | Token for GitHub scanning / `--open-issues`. |
+
+## Privacy in public control repos
+
+If this control repo is **public** but its token can read **private** repos, the
+action enables baseliner's privacy guard automatically (detected from the repo's
+visibility), so private repo names and findings are not leaked into the public
+Actions log or artifacts. Private/internal repos are redacted by default; choose
+the treatment with `privacy.private_repos` in `baseliner.yaml`
+(`redact` | `exclude` | `fail` | `allow`). Per-repo findings issues
+(`open-issues`) still open inside each private repo. See the
+[privacy guard docs](https://baselinerhq.github.io/control-repo#privacy-scanning-private-repos-from-a-public-control-repo).
 
 ## Exit behavior
 

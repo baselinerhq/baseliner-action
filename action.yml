@@ -7,8 +7,8 @@ branding:
 
 inputs:
   version:
-    description: "baseliner version to install (e.g. v0.2.0, or 'latest')."
-    default: "v0.2.0"
+    description: "baseliner version to install (e.g. v0.2.1, or 'latest')."
+    default: "v0.2.1"
   config:
     description: "Path to the baseliner config file."
     default: "baseliner.yaml"
@@ -27,6 +27,13 @@ inputs:
   open-issues:
     description: "Open/update a findings issue per repo (true/false)."
     default: "false"
+  public-context:
+    description: >-
+      Treat scan output as public, protecting private/internal repos per
+      privacy.private_repos (default redact). Leave empty to auto-detect from
+      this (the control) repo's visibility: enabled when public, disabled when
+      private/internal. Set 'true'/'false' to override.
+    default: ""
   extra-args:
     description: "Additional arguments appended to `baseliner scan` (optional)."
     default: ""
@@ -52,6 +59,8 @@ runs:
       working-directory: ${{ inputs.working-directory }}
       env:
         GITHUB_TOKEN: ${{ inputs.github-token }}
+        GH_TOKEN: ${{ inputs.github-token }}
+        PUBLIC_CONTEXT_INPUT: ${{ inputs.public-context }}
       run: |
         set -euo pipefail
         args=(scan --config "${{ inputs.config }}" --format "${{ inputs.format }}")
@@ -59,6 +68,23 @@ runs:
         [ -n "${{ inputs.sarif-file }}" ] && args+=(--sarif-file "${{ inputs.sarif-file }}")
         [ -n "${{ inputs.fail-under }}" ] && args+=(--fail-under "${{ inputs.fail-under }}")
         [ "${{ inputs.open-issues }}" = "true" ] && args+=(--open-issues)
+
+        # Privacy guard: protect private repos when this control repo is public.
+        # Auto-detect from the repo's visibility unless overridden. Fail closed:
+        # only a definitively private/internal repo disables the guard; public
+        # or an undeterminable visibility (e.g. token lacks metadata read on a
+        # scheduled run) enables it.
+        public="${PUBLIC_CONTEXT_INPUT}"
+        if [ -z "$public" ]; then
+          vis=$(gh api "repos/$GITHUB_REPOSITORY" --jq .visibility 2>/dev/null || true)
+          if [ "$vis" = "private" ] || [ "$vis" = "internal" ]; then
+            public=false
+          else
+            public=true
+          fi
+        fi
+        [ "$public" = "true" ] && args+=(--public-context)
+
         # shellcheck disable=SC2206
         [ -n "${{ inputs.extra-args }}" ] && args+=(${{ inputs.extra-args }})
         "$HOME/.local/bin/baseliner" "${args[@]}"
