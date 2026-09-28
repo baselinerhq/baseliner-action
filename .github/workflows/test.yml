@@ -32,3 +32,24 @@ jobs:
           config: baseliner.yaml
           format: table
           fail-under: "0"
+
+      # api-url must reach baseliner. With open-issues on, baseliner builds its
+      # GitHub client and rejects a non-absolute GITHUB_API_URL (exit 2). If the
+      # input were dropped, the runner's https://api.github.com would be used
+      # and the step would pass — so this step is expected to fail.
+      - name: Run with an invalid api-url
+        id: bad_api_url
+        continue-on-error: true
+        uses: ./
+        with:
+          config: baseliner.yaml
+          format: table
+          fail-under: "0"
+          open-issues: "true"
+          api-url: not-a-url
+
+      - name: The invalid api-url must have failed the scan
+        if: steps.bad_api_url.outcome != 'failure'
+        run: |
+          echo "api-url did not reach baseliner (step outcome: ${{ steps.bad_api_url.outcome }})"
+          exit 1

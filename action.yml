@@ -7,8 +7,8 @@ branding:
 
 inputs:
   version:
-    description: "baseliner version to install (e.g. v0.2.4, or 'latest')."
-    default: "v0.2.4"
+    description: "baseliner version to install (e.g. v0.2.5, or 'latest')."
+    default: "v0.2.5"
   config:
     description: "Path to the baseliner config file."
     default: "baseliner.yaml"
@@ -43,6 +43,13 @@ inputs:
   github-token:
     description: "Token used for GitHub scanning and --open-issues (and to authenticate the install when version=latest)."
     default: ${{ github.token }}
+  api-url:
+    description: >-
+      GitHub API root for the scan (e.g. https://api.github.com). Leave empty to
+      use the runner's GITHUB_API_URL. Set it to scan a github.com org from a
+      GitHub Enterprise Server runner — Actions won't let `env:` override
+      GITHUB_API_URL, so this input is the way to change it.
+    default: ""
 
 runs:
   using: "composite"
@@ -61,6 +68,7 @@ runs:
         GITHUB_TOKEN: ${{ inputs.github-token }}
         GH_TOKEN: ${{ inputs.github-token }}
         PUBLIC_CONTEXT_INPUT: ${{ inputs.public-context }}
+        API_URL_INPUT: ${{ inputs.api-url }}
       run: |
         set -euo pipefail
         args=(scan --config "${{ inputs.config }}" --format "${{ inputs.format }}")
@@ -87,4 +95,9 @@ runs:
 
         # shellcheck disable=SC2206
         [ -n "${{ inputs.extra-args }}" ] && args+=(${{ inputs.extra-args }})
+
+        # baseliner reads GITHUB_API_URL for its API root. Actions sets it and
+        # won't let `env:` override it, so the api-url input is applied here —
+        # after the gh visibility lookup above, and for baseliner only.
+        [ -n "$API_URL_INPUT" ] && export GITHUB_API_URL="$API_URL_INPUT"
         "$HOME/.local/bin/baseliner" "${args[@]}"
