@@ -39,7 +39,7 @@ the install-script boilerplate.
 
 | Input | Default | Description |
 |-------|---------|-------------|
-| `version` | `v0.2.4` | baseliner version to install (or `latest`). |
+| `version` | `v0.2.5` | baseliner version to install (or `latest`). |
 | `config` | `baseliner.yaml` | Path to the config file. |
 | `format` | `both` | `json`, `table`, or `both`. |
 | `output-file` | — | Write JSON results here. |
@@ -50,6 +50,12 @@ the install-script boilerplate.
 | `extra-args` | — | Extra arguments appended to `baseliner scan`. |
 | `working-directory` | `.` | Directory to run from. |
 | `github-token` | `${{ github.token }}` | Token for GitHub scanning / `--open-issues`. |
+| `api-url` | — | GitHub API root for the scan. Empty uses the runner's `GITHUB_API_URL`. |
+
+baseliner (v0.2.5+) takes its API root from `GITHUB_API_URL`, which Actions sets
+on every runner — on GitHub Enterprise Server, to that server's API — and which
+`env:` can't override. To scan a github.com org from a GHES runner, set
+`api-url: https://api.github.com`, or the token is sent to the GHES API.
 
 ## Privacy in public control repos
 
