@@ -39,7 +39,7 @@ the install-script boilerplate.
 
 | Input | Default | Description |
 |-------|---------|-------------|
-| `version` | `v0.2.1` | baseliner version to install (or `latest`). |
+| `version` | `v0.2.4` | baseliner version to install (or `latest`). |
 | `config` | `baseliner.yaml` | Path to the config file. |
 | `format` | `both` | `json`, `table`, or `both`. |
 | `output-file` | — | Write JSON results here. |
