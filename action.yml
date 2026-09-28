@@ -1,4 +1,4 @@
-name: "baseliner"
+name: "Baseliner Assessment"
 description: "Scan a fleet of repositories against a configurable baseline policy."
 author: "baselinerhq"
 branding:
