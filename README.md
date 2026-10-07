@@ -39,7 +39,7 @@ the install-script boilerplate.
 
 | Input | Default | Description |
 |-------|---------|-------------|
-| `version` | `v0.2.5` | baseliner version to install (or `latest`). |
+| `version` | `v0.2.6` | baseliner version to install (or `latest`). |
 | `config` | `baseliner.yaml` | Path to the config file. |
 | `format` | `both` | `json`, `table`, or `both`. |
 | `output-file` | — | Write JSON results here. |
@@ -49,13 +49,30 @@ the install-script boilerplate.
 | `public-context` | auto | Protect private/internal repos when the output is public. Empty auto-detects from this repo's visibility (on when public, off when private); set `true`/`false` to override. |
 | `extra-args` | — | Extra arguments appended to `baseliner scan`. |
 | `working-directory` | `.` | Directory to run from. |
-| `github-token` | `${{ github.token }}` | Token for GitHub scanning / `--open-issues`. |
+| `github-token` | `${{ github.token }}` | Token for GitHub scanning / `--open-issues`. The default only reaches the repo the workflow runs in; see [Token](#token). |
 | `api-url` | — | GitHub API root for the scan. Empty uses the runner's `GITHUB_API_URL`. |
 
 baseliner (v0.2.5+) takes its API root from `GITHUB_API_URL`, which Actions sets
 on every runner — on GitHub Enterprise Server, to that server's API — and which
 `env:` can't override. To scan a github.com org from a GHES runner, set
 `api-url: https://api.github.com`, or the token is sent to the GHES API.
+
+## Token
+
+The default `github-token` is the workflow's own `GITHUB_TOKEN`, which only
+reaches the repo the workflow runs in. To scan other repos, and for
+`open-issues` in particular, pass a PAT or GitHub App token that can read every
+scanned repo and, for `open-issues`, has Issues read and write on each of them:
+
+```yaml
+- uses: baselinerhq/baseliner-action@v1
+  with:
+    github-token: ${{ secrets.BASELINER_TOKEN }}
+    open-issues: true
+```
+
+With the default token, `open-issues: true` on a fleet scan cannot write the
+findings issues, and the run exits 2.
 
 ## Privacy in public control repos
 
@@ -71,7 +88,8 @@ the treatment with `privacy.private_repos` in `baseliner.yaml`
 ## Exit behavior
 
 The action fails the step when baseliner exits non-zero — exit 1 on findings (or
-below `--fail-under`), exit 2 on a config/auth/runtime error. See the
+below `--fail-under`), exit 2 on a config/auth/runtime error or, with
+`open-issues`, when a findings issue could not be searched for or written. See the
 [baseliner docs](https://baselinerhq.github.io).
 
 ## License
