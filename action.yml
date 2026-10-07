@@ -41,7 +41,7 @@ inputs:
     description: "Directory to run the scan from."
     default: "."
   github-token:
-    description: "Token used for GitHub scanning and --open-issues (and to authenticate the install when version=latest)."
+    description: "Token used for GitHub scanning and --open-issues (and to authenticate the install when version=latest). The default reaches only this repo; pass a PAT or App token for a fleet scan."
     default: ${{ github.token }}
   api-url:
     description: >-

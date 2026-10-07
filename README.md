@@ -59,10 +59,16 @@ on every runner — on GitHub Enterprise Server, to that server's API — and wh
 
 ## Token
 
-The default `github-token` is the workflow's own `GITHUB_TOKEN`, which only
-reaches the repo the workflow runs in. To scan other repos, and for
-`open-issues` in particular, pass a PAT or GitHub App token that can read every
-scanned repo and, for `open-issues`, has Issues read and write on each of them:
+The default `github-token` is the workflow's own `GITHUB_TOKEN`. Its
+permissions are limited to the repo the workflow runs in: elsewhere it can read
+public repos only, and it cannot write issues. With it, an org scan silently
+covers only the public repos, and `open-issues: true` cannot write findings
+issues into other repos, so the run exits 2.
+
+For a fleet scan, pass a PAT or GitHub App token that can read every scanned
+repo and, for `open-issues`, has Issues read and write on each of them. Either
+form works; a token set in the step's `env:` (as in the examples above) takes
+precedence over the input's default:
 
 ```yaml
 - uses: baselinerhq/baseliner-action@v1
@@ -71,8 +77,24 @@ scanned repo and, for `open-issues`, has Issues read and write on each of them:
     open-issues: true
 ```
 
-With the default token, `open-issues: true` on a fleet scan cannot write the
-findings issues, and the run exits 2.
+Scanning only this repo with the default token works, but `open-issues` then
+needs `permissions: issues: write` on the job.
+
+## Upgrading to baseliner v0.2.6
+
+This version of the action installs baseliner v0.2.6 by default. Two changes can turn
+a green run red:
+
+- **Exit 2 on undeliverable findings issues.** With `open-issues`, a findings
+  issue that can't be searched for or written now fails the run instead of
+  being logged and ignored. Archived repos and repos with Issues disabled are
+  skipped. The usual cause is the token; see [Token](#token).
+- **`ci_present` fails CI that GitHub isn't running.** Workflows GitHub has
+  disabled no longer count, nor do a fork's workflows it never enabled. Under
+  the default gate or `fail-under`, such a repo can now fail.
+
+To stay on the previous release while you fix either, set `version: v0.2.5`.
+See the [v0.2.6 release notes](https://github.com/baselinerhq/baseliner/releases/tag/v0.2.6).
 
 ## Privacy in public control repos
 
@@ -89,7 +111,8 @@ the treatment with `privacy.private_repos` in `baseliner.yaml`
 
 The action fails the step when baseliner exits non-zero — exit 1 on findings (or
 below `--fail-under`), exit 2 on a config/auth/runtime error or, with
-`open-issues`, when a findings issue could not be searched for or written. See the
+`open-issues`, when a findings issue could not be searched for or written
+(archived repos and repos with Issues disabled are skipped). See the
 [baseliner docs](https://baselinerhq.github.io).
 
 ## License
