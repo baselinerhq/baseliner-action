@@ -53,3 +53,30 @@ jobs:
         run: |
           echo "api-url did not reach baseliner (step outcome: ${{ steps.bad_api_url.outcome }})"
           exit 1
+
+      # public-context ignores case: "TRUE" must be accepted, not read as off.
+      - name: Run with public-context in upper case
+        uses: ./
+        with:
+          config: baseliner.yaml
+          format: table
+          fail-under: "0"
+          public-context: "TRUE"
+
+      # Any value other than true/false/empty must fail, not leave the guard
+      # off: before, "yes" silently skipped --public-context.
+      - name: Run with an invalid public-context
+        id: bad_public_context
+        continue-on-error: true
+        uses: ./
+        with:
+          config: baseliner.yaml
+          format: table
+          fail-under: "0"
+          public-context: "yes"
+
+      - name: The invalid public-context must have failed the step
+        if: steps.bad_public_context.outcome != 'failure'
+        run: |
+          echo "public-context 'yes' was accepted (step outcome: ${{ steps.bad_public_context.outcome }})"
+          exit 1

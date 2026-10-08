@@ -46,7 +46,7 @@ the install-script boilerplate.
 | `sarif-file` | — | Write SARIF 2.1.0 here (for code scanning). |
 | `fail-under` | — | Exit 1 if any repo scores below this (`0.0`–`1.0`). |
 | `open-issues` | `false` | Open/update a findings issue per repo. |
-| `public-context` | auto | Protect private/internal repos when the output is public. Empty auto-detects from this repo's visibility (on when public, off when private); set `true`/`false` to override. |
+| `public-context` | auto | Protect private/internal repos when the output is public. Empty auto-detects from this repo's visibility (on when public, off when private); set `true`/`false` to override (case-insensitive). Any other value fails the step rather than leaving the guard off. |
 | `extra-args` | — | Extra arguments appended to `baseliner scan`. |
 | `working-directory` | `.` | Directory to run from. |
 | `github-token` | `${{ github.token }}` | Token for GitHub scanning / `--open-issues`. The default only reaches the repo the workflow runs in; see [Token](#token). |
