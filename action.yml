@@ -7,8 +7,8 @@ branding:
 
 inputs:
   version:
-    description: "baseliner version to install (e.g. v0.2.6, or 'latest')."
-    default: "v0.2.6"
+    description: "baseliner version to install (e.g. v0.2.7, or 'latest')."
+    default: "v0.2.7"
   config:
     description: "Path to the baseliner config file."
     default: "baseliner.yaml"
