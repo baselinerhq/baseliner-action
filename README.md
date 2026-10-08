@@ -39,7 +39,7 @@ the install-script boilerplate.
 
 | Input | Default | Description |
 |-------|---------|-------------|
-| `version` | `v0.2.7` | baseliner version to install (or `latest`). |
+| `version` | `v0.2.8` | baseliner version to install (or `latest`). |
 | `config` | `baseliner.yaml` | Path to the config file. |
 | `format` | `both` | `json`, `table`, or `both`. |
 | `output-file` | — | Write JSON results here. |
@@ -80,27 +80,25 @@ precedence over the input's default:
 Scanning only this repo with the default token works, but `open-issues` then
 needs `permissions: issues: write` on the job.
 
-## Upgrading to baseliner v0.2.7
+## Upgrading to baseliner v0.2.8
 
-This version of the action installs baseliner v0.2.7 by default. For a workflow
+This version of the action installs baseliner v0.2.8 by default. For a workflow
 using this action:
 
-- **Evidence that could not be read is `unknown`, not a failure.** A file check
-  whose directory listing or README could not be read (for example a token
-  without Contents read) reports `unknown`, which lowers coverage. With
-  `--min-coverage 1.0` (through `extra-args`), such a run is now red, where it
-  used to be green with the checks failing as if the files were missing.
-- **A findings issue isn't closed on evidence that could not be read.** With
-  `open-issues`, a check the issue lists as failing that is `unknown` this run
-  stays in the issue as "last seen failing".
-- **The privacy guard is stricter.** Private repo names are redacted in any
-  letter case, and `exclude` mode leaves no trace of excluded repos in the log.
-  A private control repo's guard is still left to its config: the action passes
-  no flag for it and hides `GITHUB_ACTIONS`, under which baseliner v0.2.7 would
-  otherwise turn the guard on.
+- **New: `policy.ignore_when`** in `baseliner.yaml` skips checks by repo
+  visibility without naming any repo. For example, private repos can skip
+  `license_exists`. See the
+  [policy guide](https://github.com/baselinerhq/baseliner/blob/main/docs/policies.md#ignoring-checks-per-deployment).
+- **A rate-limited scan exits 2** and says how many requests GitHub refused and
+  when the limit resets. Before, it could pass with checks silently `unknown`.
+- **Keep the schedule alive.** GitHub disables a public repo's scheduled
+  workflows after 60 days without repository activity, and scan runs don't
+  count. Add the `keepalive` job from
+  [Keeping the schedule alive](https://github.com/baselinerhq/baseliner/blob/main/docs/control-repo.md#keeping-the-schedule-alive)
+  to the workflow that uses this action.
 
-To stay on the previous release, set `version: v0.2.6`.
-See the [v0.2.7 release notes](https://github.com/baselinerhq/baseliner/releases/tag/v0.2.7).
+To stay on the previous release, set `version: v0.2.7`.
+See the [v0.2.8 release notes](https://github.com/baselinerhq/baseliner/releases/tag/v0.2.8).
 
 ## Privacy in public control repos
 
