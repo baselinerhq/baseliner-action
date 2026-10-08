@@ -54,14 +54,39 @@ jobs:
           echo "api-url did not reach baseliner (step outcome: ${{ steps.bad_api_url.outcome }})"
           exit 1
 
-      # public-context ignores case: "TRUE" must be accepted, not read as off.
-      - name: Run with public-context in upper case
-        uses: ./
-        with:
-          config: baseliner.yaml
-          format: table
-          fail-under: "0"
-          public-context: "TRUE"
+      # The public-context parser, case by case: case and surrounding
+      # whitespace are ignored, and anything else fails without leaving the
+      # guard off. A newline in the value must not reach the log unescaped,
+      # or it would start a new workflow command.
+      - name: Parse public-context values
+        run: |
+          check() {
+            local got rc=0
+            got=$(scripts/public-context.sh "$1") || rc=$?
+            if [ "$2" = "error" ]; then
+              [ "$rc" -ne 0 ] || { echo "accepted '$1' as '$got'"; return 1; }
+              [ "$(printf '%s\n' "$got" | wc -l)" -eq 1 ] || { echo "multi-line error for '$1'"; return 1; }
+            else
+              if [ "$rc" -ne 0 ] || [ "$got" != "$2" ]; then
+                echo "'$1': got '$got' rc=$rc, want '$2'"
+                return 1
+              fi
+            fi
+          }
+          check "true" true
+          check "TRUE" true
+          check " True " true
+          check $'\ttrue\n' true
+          check "false" false
+          check "FALSE" false
+          check "" ""
+          check "   " ""
+          check "yes" error
+          check "1" error
+          check "tr ue" error
+          check "fal se" error
+          check $'yes\n::warning::injected' error
+          echo "all public-context cases passed"
 
       # Any value other than true/false/empty must fail, not leave the guard
       # off: before, "yes" silently skipped --public-context.

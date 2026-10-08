@@ -83,17 +83,10 @@ runs:
         # only a definitively private/internal repo disables the guard; public
         # or an undeterminable visibility (e.g. token lacks metadata read on a
         # scheduled run) enables it.
-        # Only true, false or empty are accepted, in any case and with
-        # surrounding whitespace ignored. Anything else is an error rather
-        # than a silent "off": "True" or "yes" means the author wanted it on.
-        public=$(printf '%s' "$PUBLIC_CONTEXT_INPUT" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')
-        case "$public" in
-          ""|true|false) ;;
-          *)
-            echo "::error::public-context must be true, false, or empty to auto-detect; got '$PUBLIC_CONTEXT_INPUT'"
-            exit 1
-            ;;
-        esac
+        if ! public=$("$GITHUB_ACTION_PATH/scripts/public-context.sh" "$PUBLIC_CONTEXT_INPUT"); then
+          echo "$public" # the ::error:: line
+          exit 1
+        fi
         if [ -z "$public" ]; then
           vis=$(gh api "repos/$GITHUB_REPOSITORY" --jq .visibility 2>/dev/null || true)
           if [ "$vis" = "private" ] || [ "$vis" = "internal" ]; then
