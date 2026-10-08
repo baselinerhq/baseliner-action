@@ -32,7 +32,8 @@ inputs:
       Treat scan output as public, protecting private/internal repos per
       privacy.private_repos (default redact). Leave empty to auto-detect from
       this (the control) repo's visibility: enabled when public, disabled when
-      private/internal. Set 'true'/'false' to override.
+      private/internal. Set 'true'/'false' to override (case-insensitive);
+      any other value fails the step.
     default: ""
   extra-args:
     description: "Additional arguments appended to `baseliner scan` (optional)."
@@ -82,7 +83,10 @@ runs:
         # only a definitively private/internal repo disables the guard; public
         # or an undeterminable visibility (e.g. token lacks metadata read on a
         # scheduled run) enables it.
-        public="${PUBLIC_CONTEXT_INPUT}"
+        if ! public=$("$GITHUB_ACTION_PATH/scripts/public-context.sh" "$PUBLIC_CONTEXT_INPUT"); then
+          echo "$public" # the ::error:: line
+          exit 1
+        fi
         if [ -z "$public" ]; then
           vis=$(gh api "repos/$GITHUB_REPOSITORY" --jq .visibility 2>/dev/null || true)
           if [ "$vis" = "private" ] || [ "$vis" = "internal" ]; then
