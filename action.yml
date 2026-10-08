@@ -32,8 +32,9 @@ inputs:
       Treat scan output as public, protecting private/internal repos per
       privacy.private_repos (default redact). Leave empty to auto-detect from
       this (the control) repo's visibility: enabled when public, disabled when
-      private/internal. Set 'true'/'false' to override (case-insensitive);
-      any other value fails the step.
+      private/internal. Set 'true' to force it on, or 'false' to leave it to
+      privacy.public_context in the config (case-insensitive); any other value
+      fails the step.
     default: ""
   extra-args:
     description: "Additional arguments appended to `baseliner scan` (optional)."
@@ -95,10 +96,17 @@ runs:
             public=true
           fi
         fi
-        # Pass the value either way: baseliner treats an unset context as
-        # public under Actions, so a private control repo needs an explicit
-        # false.
-        args+=("--public-context=$public")
+        # Never pass --public-context=false: the flag outranks the config, so it
+        # would turn off a privacy.public_context: true the user set. When the
+        # guard is not wanted here, pass no flag and hide GITHUB_ACTIONS from
+        # baseliner, which otherwise treats an unset context as public under
+        # Actions; the config then decides, and defaults to off.
+        runner=()
+        if [ "$public" = "true" ]; then
+          args+=(--public-context)
+        else
+          runner=(env -u GITHUB_ACTIONS)
+        fi
 
         # shellcheck disable=SC2206
         [ -n "${{ inputs.extra-args }}" ] && args+=(${{ inputs.extra-args }})
@@ -107,4 +115,4 @@ runs:
         # won't let `env:` override it, so the api-url input is applied here —
         # after the gh visibility lookup above, and for baseliner only.
         [ -n "$API_URL_INPUT" ] && export GITHUB_API_URL="$API_URL_INPUT"
-        "$HOME/.local/bin/baseliner" "${args[@]}"
+        ${runner[@]+"${runner[@]}"} "$HOME/.local/bin/baseliner" "${args[@]}"
