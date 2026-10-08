@@ -39,7 +39,7 @@ the install-script boilerplate.
 
 | Input | Default | Description |
 |-------|---------|-------------|
-| `version` | `v0.2.6` | baseliner version to install (or `latest`). |
+| `version` | `v0.2.7` | baseliner version to install (or `latest`). |
 | `config` | `baseliner.yaml` | Path to the config file. |
 | `format` | `both` | `json`, `table`, or `both`. |
 | `output-file` | — | Write JSON results here. |
@@ -80,21 +80,27 @@ precedence over the input's default:
 Scanning only this repo with the default token works, but `open-issues` then
 needs `permissions: issues: write` on the job.
 
-## Upgrading to baseliner v0.2.6
+## Upgrading to baseliner v0.2.7
 
-This version of the action installs baseliner v0.2.6 by default. Two changes can turn
-a green run red:
+This version of the action installs baseliner v0.2.7 by default. For a workflow
+using this action:
 
-- **Exit 2 on undeliverable findings issues.** With `open-issues`, a findings
-  issue that can't be searched for or written now fails the run instead of
-  being logged and ignored. Archived repos and repos with Issues disabled are
-  skipped. The usual cause is the token; see [Token](#token).
-- **`ci_present` fails CI that GitHub isn't running.** Workflows GitHub has
-  disabled no longer count, nor do a fork's workflows it never enabled. Under
-  the default gate or `fail-under`, such a repo can now fail.
+- **Evidence that could not be read is `unknown`, not a failure.** A file check
+  whose directory listing or README could not be read (for example a token
+  without Contents read) reports `unknown`, which lowers coverage. With
+  `--min-coverage 1.0` (through `extra-args`), such a run is now red, where it
+  used to be green with the checks failing as if the files were missing.
+- **A findings issue isn't closed on evidence that could not be read.** With
+  `open-issues`, a check the issue lists as failing that is `unknown` this run
+  stays in the issue as "last seen failing".
+- **The privacy guard is stricter.** Private repo names are redacted in any
+  letter case, and `exclude` mode leaves no trace of excluded repos in the log.
+  A private control repo's guard is still left to its config: the action passes
+  no flag for it and hides `GITHUB_ACTIONS`, under which baseliner v0.2.7 would
+  otherwise turn the guard on.
 
-To stay on the previous release while you fix either, set `version: v0.2.5`.
-See the [v0.2.6 release notes](https://github.com/baselinerhq/baseliner/releases/tag/v0.2.6).
+To stay on the previous release, set `version: v0.2.6`.
+See the [v0.2.7 release notes](https://github.com/baselinerhq/baseliner/releases/tag/v0.2.7).
 
 ## Privacy in public control repos
 
