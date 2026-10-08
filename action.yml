@@ -95,7 +95,10 @@ runs:
             public=true
           fi
         fi
-        [ "$public" = "true" ] && args+=(--public-context)
+        # Pass the value either way: baseliner treats an unset context as
+        # public under Actions, so a private control repo needs an explicit
+        # false.
+        args+=("--public-context=$public")
 
         # shellcheck disable=SC2206
         [ -n "${{ inputs.extra-args }}" ] && args+=(${{ inputs.extra-args }})
