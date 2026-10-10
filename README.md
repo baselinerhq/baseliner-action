@@ -39,7 +39,7 @@ the install-script boilerplate.
 
 | Input | Default | Description |
 |-------|---------|-------------|
-| `version` | `v0.2.8` | baseliner version to install (or `latest`). |
+| `version` | `v0.3.0` | baseliner version to install (or `latest`). |
 | `config` | `baseliner.yaml` | Path to the config file. |
 | `format` | `both` | `json`, `table`, or `both`. |
 | `output-file` | — | Write JSON results here. |
@@ -80,25 +80,28 @@ precedence over the input's default:
 Scanning only this repo with the default token works, but `open-issues` then
 needs `permissions: issues: write` on the job.
 
-## Upgrading to baseliner v0.2.8
+## Upgrading to baseliner v0.3.0
 
-This version of the action installs baseliner v0.2.8 by default. For a workflow
+This version of the action installs baseliner v0.3.0 by default. For a workflow
 using this action:
 
-- **New: `policy.ignore_when`** in `baseliner.yaml` skips checks by repo
-  visibility without naming any repo. For example, private repos can skip
-  `license_exists`. See the
-  [policy guide](https://github.com/baselinerhq/baseliner/blob/main/docs/policies.md#ignoring-checks-per-deployment).
-- **A rate-limited scan exits 2** and says how many requests GitHub refused and
-  when the limit resets. Before, it could pass with checks silently `unknown`.
-- **Keep the schedule alive.** GitHub disables a public repo's scheduled
-  workflows after 60 days without repository activity, and scan runs don't
-  count. Add the `keepalive` job from
-  [Keeping the schedule alive](https://github.com/baselinerhq/baseliner/blob/main/docs/control-repo.md#keeping-the-schedule-alive)
-  to the workflow that uses this action.
+- **New: repo waivers.** A repo can waive checks for itself in a
+  `.baseliner.yml` at its root, for the checks `policy.repo_waivers.allow`
+  lists. See
+  [Repo waivers](https://github.com/baselinerhq/baseliner/blob/main/docs/policies.md#repo-waivers).
+- **New: GitLab groups.** Add `scope.gitlab` to `baseliner.yaml` and pass a
+  `read_api` token as `GITLAB_TOKEN` in the step's `env`. See
+  [GitLab](https://github.com/baselinerhq/baseliner/blob/main/docs/configuration.md#gitlab).
+  Findings issues stay GitHub only.
+- **`type: user` scopes:** a repo owned by another login is now slugged
+  `<owner>/<repo>`; re-key any `repo_ignores` entry for one.
+- **`open-issues`:** a findings issue GitHub opens without its `baseliner`
+  label (it drops labels when the token's user lacks push access) is closed
+  at once and the run exits 2, instead of a new one being opened every run.
+- **Reports and issues** show check messages as code.
 
-To stay on the previous release, set `version: v0.2.7`.
-See the [v0.2.8 release notes](https://github.com/baselinerhq/baseliner/releases/tag/v0.2.8).
+To stay on the previous release, set `version: v0.2.8`.
+See the [v0.3.0 release notes](https://github.com/baselinerhq/baseliner/releases/tag/v0.3.0).
 
 ## Privacy in public control repos
 
