@@ -39,7 +39,7 @@ the install-script boilerplate.
 
 | Input | Default | Description |
 |-------|---------|-------------|
-| `version` | `v0.3.0` | baseliner version to install (or `latest`). |
+| `version` | `v0.4.0` | baseliner version to install (or `latest`). |
 | `config` | `baseliner.yaml` | Path to the config file. |
 | `format` | `both` | `json`, `table`, or `both`. |
 | `output-file` | — | Write JSON results here. |
@@ -79,6 +79,30 @@ precedence over the input's default:
 
 Scanning only this repo with the default token works, but `open-issues` then
 needs `permissions: issues: write` on the job.
+
+## Upgrading to baseliner v0.4.0
+
+This version of the action installs baseliner v0.4.0 by default. For a workflow
+using this action:
+
+- **Breaking, for `open-issues` with a GitLab scope:** findings issues are now
+  delivered to GitLab projects too, with a token of their own. Pass one with
+  the `api` scope, whose user is Planner or higher, as `GITLAB_ISSUES_TOKEN` in
+  the step's `env` (the scan's `GITLAB_TOKEN` can stay `read_api`). Without it
+  the run exits 2 before delivering any issue, GitHub ones included. Before,
+  GitLab projects were skipped. See
+  [GitLab](https://github.com/baselinerhq/baseliner/blob/main/docs/configuration.md#gitlab).
+- **New: Gitea and Forgejo, including Codeberg.** Add `scope.gitea` to
+  `baseliner.yaml` and pass a token as `GITEA_TOKEN` in the step's `env`.
+  Findings issues are not delivered there yet.
+- **New: checks a policy defines** (`type: file_present`), and the
+  branch-protection checks on GitLab. See
+  [policies](https://github.com/baselinerhq/baseliner/blob/main/docs/policies.md).
+- **GitHub Enterprise Server in private mode:** public repos there count as
+  `internal`.
+
+To stay on the previous release, set `version: v0.3.0`.
+See the [v0.4.0 release notes](https://github.com/baselinerhq/baseliner/releases/tag/v0.4.0).
 
 ## Upgrading to baseliner v0.3.0
 
