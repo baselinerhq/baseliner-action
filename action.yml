@@ -61,6 +61,8 @@ runs:
       env:
         VERSION: ${{ inputs.version }}
         GITHUB_TOKEN: ${{ inputs.github-token }}
+        # Set here, not inherited, so the scan below runs the verified binary.
+        BINDIR: ${{ runner.temp }}/baseliner-bin
       # The installer ships with this action, so it is pinned by the action
       # ref; it verifies the archive's build provenance before installing.
       run: '"$GITHUB_ACTION_PATH/scripts/install.sh"'
@@ -117,4 +119,4 @@ runs:
         # won't let `env:` override it, so the api-url input is applied here —
         # after the gh visibility lookup above, and for baseliner only.
         [ -n "$API_URL_INPUT" ] && export GITHUB_API_URL="$API_URL_INPUT"
-        ${runner[@]+"${runner[@]}"} "$HOME/.local/bin/baseliner" "${args[@]}"
+        ${runner[@]+"${runner[@]}"} "$RUNNER_TEMP/baseliner-bin/baseliner" "${args[@]}"

@@ -84,18 +84,17 @@ needs `permissions: issues: write` on the job.
 
 The installer ships with the action, so the code that installs baseliner is
 pinned by the action ref your workflow uses (`@v1`, or a commit SHA), and
-nothing is fetched from a branch. Before installing, it checks the release
-archive two ways, and installs nothing if either fails:
-
-- it matches the release's `checksums.txt`;
-- it carries a build provenance attestation from baseliner's release workflow
-  at the requested tag, built on a GitHub-hosted runner
-  (`gh attestation verify`).
+nothing is fetched from a branch. Before installing, it checks that the
+release archive carries a build provenance attestation from baseliner's
+release workflow, at the requested tag, built on a GitHub-hosted runner
+(`gh attestation verify`), and that it matches the release's `checksums.txt`.
+If either check fails, it installs nothing.
 
 Releases before v0.3.0 carry no attestation, so the action no longer installs
-them. The runner needs `gh`, `jq` and `curl`, which GitHub-hosted runners have.
-On GitHub Enterprise Server the release is still fetched from github.com, and
-the token is not sent there.
+them. The runner needs `curl`, `jq` and a `gh` whose `attestation verify` has
+`--source-ref`; GitHub-hosted runners have all three. On GitHub Enterprise
+Server the release is still fetched from github.com, and the token is not
+sent there.
 
 ## Upgrading to baseliner v0.4.0
 

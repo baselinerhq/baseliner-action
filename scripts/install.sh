@@ -3,30 +3,30 @@
 #
 # This script ships with the action, so the code that installs baseliner is
 # pinned by the action ref the workflow uses, not fetched from a branch. The
-# archive must match its release's checksums.txt and carry a build provenance
-# attestation from baseliner's release workflow at the requested tag; an
-# archive that fails either check is not installed.
+# archive must carry a build provenance attestation from baseliner's release
+# workflow at the requested tag (verify-provenance.sh), and match its
+# release's checksums.txt; an archive that fails either is not installed.
 #
 # Env:
 #   VERSION       version to install, vX.Y.Z (v0.3.0 or later) or 'latest'
+#   BINDIR        install dir (required)
 #   GITHUB_TOKEN  optional; authenticates the github.com API calls when this
 #                 runner belongs to github.com (anonymous calls are
 #                 rate-limited on shared IPs)
-#   BINDIR        install dir (default: $HOME/.local/bin)
 set -euo pipefail
 
 REPO="baselinerhq/baseliner"
-WORKFLOW="${REPO}/.github/workflows/release.yml"
-BINDIR="${BINDIR:-$HOME/.local/bin}"
+WORKFLOW=".github/workflows/release.yml"
+here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 
 fail() {
   echo "::error::$1" >&2
   exit 1
 }
 
-for tool in gh jq curl; do
-  command -v "$tool" >/dev/null 2>&1 ||
-    fail "$tool is needed to verify baseliner's build provenance; install it on this runner"
+[ -n "${BINDIR:-}" ] || fail "BINDIR is not set"
+for tool in curl jq; do
+  command -v "$tool" >/dev/null 2>&1 || fail "$tool is needed to install baseliner; install it on this runner"
 done
 
 os=$(uname -s | tr '[:upper:]' '[:lower:]')
@@ -41,22 +41,17 @@ case "$os" in
   *) fail "unsupported OS: $os" ;;
 esac
 
-# The release and its attestations live on github.com. Send the token there
-# only when this runner belongs to github.com: on GitHub Enterprise Server it
-# is that server's token, so the calls go anonymous.
-auth=()
-case "${GITHUB_SERVER_URL:-https://github.com}" in
-  https://github.com | https://github.com/)
-    [ -n "${GITHUB_TOKEN:-}" ] && auth=(-H "Authorization: Bearer ${GITHUB_TOKEN}") ;;
-esac
-api() {
-  curl -fsSL --retry 3 -H "Accept: application/vnd.github+json" ${auth[@]+"${auth[@]}"} \
-    "https://api.github.com/$1"
-}
-
 ver="${VERSION:-latest}"
 if [ "$ver" = "latest" ]; then
-  ver=$(api "repos/${REPO}/releases/latest" | jq -r .tag_name) ||
+  # The release lives on github.com. Send the token there only when this
+  # runner belongs to github.com.
+  auth=()
+  case "${GITHUB_SERVER_URL:-https://github.com}" in
+    https://github.com | https://github.com/)
+      [ -n "${GITHUB_TOKEN:-}" ] && auth=(-H "Authorization: Bearer ${GITHUB_TOKEN}") ;;
+  esac
+  ver=$(curl -fsSL --retry 3 -H "Accept: application/vnd.github+json" ${auth[@]+"${auth[@]}"} \
+    "https://api.github.com/repos/${REPO}/releases/latest" | jq -r .tag_name) ||
     fail "could not resolve the latest baseliner release; pin a version with the 'version' input"
 fi
 [[ "$ver" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || fail "version must be vX.Y.Z or 'latest', got '${ver}'"
@@ -69,6 +64,8 @@ echo "downloading ${base}/${archive}"
 curl -fsSL --retry 3 -o "$tmp/$archive" "${base}/${archive}"
 curl -fsSL --retry 3 -o "$tmp/checksums.txt" "${base}/checksums.txt"
 
+"$here/verify-provenance.sh" "$tmp/$archive" "$ver" "$WORKFLOW"
+
 want=$(awk -v f="$archive" '$2 == f { print $1 }' "$tmp/checksums.txt")
 if command -v sha256sum >/dev/null 2>&1; then
   got=$(sha256sum "$tmp/$archive" | cut -d' ' -f1)
@@ -78,24 +75,7 @@ fi
 if [ -z "$want" ] || [ "$got" != "$want" ]; then
   fail "${archive} does not match the ${ver} release's checksums.txt; not installing"
 fi
-
-# Built by baseliner's release workflow, from the tag asked for, on a
-# GitHub-hosted runner. Releases before v0.3.0 carry no attestation. The
-# bundle is fetched here and checked offline, so gh needs no login.
-if ! api "repos/${REPO}/attestations/sha256:${got}" 2>/dev/null |
-  jq -ce '.attestations[].bundle' >"$tmp/bundle.jsonl"; then
-  fail "${archive} from ${ver} has no build provenance attestation (releases before v0.3.0 have none); not installing"
-fi
-if ! env -u GH_TOKEN -u GITHUB_TOKEN GH_HOST=github.com gh attestation verify "$tmp/$archive" \
-  --bundle "$tmp/bundle.jsonl" \
-  --repo "$REPO" \
-  --signer-workflow "$WORKFLOW" \
-  --source-ref "refs/tags/${ver}" \
-  --deny-self-hosted-runners >"$tmp/verify.log" 2>&1; then
-  cat "$tmp/verify.log" >&2
-  fail "${archive} from ${ver} has no valid build provenance from ${WORKFLOW} at ${ver} (releases before v0.3.0 have none); not installing"
-fi
-echo "verified ${archive} ${ver}: SHA-256 ${got}, built by ${WORKFLOW}"
+echo "verified ${archive} ${ver} (SHA-256 ${got}): built by ${REPO}/${WORKFLOW} at ${ver}"
 
 tar -xzf "$tmp/$archive" -C "$tmp" baseliner
 mkdir -p "$BINDIR"
