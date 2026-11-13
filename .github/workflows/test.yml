@@ -167,3 +167,29 @@ jobs:
           set -e
           [ "$rc" -ne 0 ] || { echo "a malformed version was accepted"; exit 1; }
           grep -q "version must be vX.Y.Z" <<<"$out" || { echo "$out"; echo "refused for another reason"; exit 1; }
+
+  # TEMPORARY: mutation sweep of verify-provenance.sh; reverted before merge.
+  mutants:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Sweep
+        run: |
+          curl -fsSL -o "$RUNNER_TEMP/b.tar.gz" \
+            https://github.com/baselinerhq/baseliner/releases/download/v0.4.0/baseliner_linux_amd64.tar.gz
+          orig=scripts/verify-provenance.sh
+          sweep() {
+            local name=$1 expr=$2 m="$RUNNER_TEMP/m.sh"
+            sed "$expr" "$orig" > "$m"; chmod +x "$m"
+            if [ "$(sha256sum < "$m")" = "$(sha256sum < "$orig")" ]; then echo "BROKEN   $name"; return; fi
+            local killed=0
+            "$m" "$RUNNER_TEMP/b.tar.gz" v0.4.0 .github/workflows/release.yml >/dev/null 2>&1 || killed=1
+            "$m" "$RUNNER_TEMP/b.tar.gz" v0.3.0 .github/workflows/release.yml >/dev/null 2>&1 && killed=1
+            "$m" "$RUNNER_TEMP/b.tar.gz" v0.4.0 .github/workflows/ci.yml >/dev/null 2>&1 && killed=1
+            [ "$killed" = 1 ] && echo "KILLED   $name" || echo "SURVIVED $name"
+          }
+          sweep "control (no-op)" 's/THIS DOES NOT EXIST/x/'
+          sweep "drop --source-ref" '/--source-ref/d'
+          sweep "drop --signer-workflow" '/--signer-workflow/d'
+          sweep "skip gh verify" 's/^if ! env -u GH_TOKEN/if false \&\& env -u GH_TOKEN/'
+          sweep "drop --deny-self-hosted-runners" 's/^  --deny-self-hosted-runners; then/  ; then/'
