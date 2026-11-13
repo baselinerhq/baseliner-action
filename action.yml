@@ -7,7 +7,7 @@ branding:
 
 inputs:
   version:
-    description: "baseliner version to install (e.g. v0.4.0, or 'latest')."
+    description: "baseliner version to install, v0.3.0 or later (e.g. v0.4.0, or 'latest'). Its build provenance is verified before it is installed."
     default: "v0.4.0"
   config:
     description: "Path to the baseliner config file."
@@ -43,7 +43,7 @@ inputs:
     description: "Directory to run the scan from."
     default: "."
   github-token:
-    description: "Token used for GitHub scanning and --open-issues (and to authenticate the install when version=latest). The default reaches only this repo; pass a PAT or App token for a fleet scan."
+    description: "Token used for GitHub scanning and --open-issues (and, on github.com runners, for the install's release and attestation lookups). The default reaches only this repo; pass a PAT or App token for a fleet scan."
     default: ${{ github.token }}
   api-url:
     description: >-
@@ -61,7 +61,11 @@ runs:
       env:
         VERSION: ${{ inputs.version }}
         GITHUB_TOKEN: ${{ inputs.github-token }}
-      run: curl -fsSL https://raw.githubusercontent.com/baselinerhq/baseliner/main/scripts/install.sh | bash
+        # Set here, not inherited, so the scan below runs the verified binary.
+        BINDIR: ${{ runner.temp }}/baseliner-bin
+      # The installer ships with this action, so it is pinned by the action
+      # ref; it verifies the archive's build provenance before installing.
+      run: '"$GITHUB_ACTION_PATH/scripts/install.sh"'
 
     - name: Run baseliner
       shell: bash
@@ -115,4 +119,4 @@ runs:
         # won't let `env:` override it, so the api-url input is applied here —
         # after the gh visibility lookup above, and for baseliner only.
         [ -n "$API_URL_INPUT" ] && export GITHUB_API_URL="$API_URL_INPUT"
-        ${runner[@]+"${runner[@]}"} "$HOME/.local/bin/baseliner" "${args[@]}"
+        ${runner[@]+"${runner[@]}"} "$RUNNER_TEMP/baseliner-bin/baseliner" "${args[@]}"

@@ -39,7 +39,7 @@ the install-script boilerplate.
 
 | Input | Default | Description |
 |-------|---------|-------------|
-| `version` | `v0.4.0` | baseliner version to install (or `latest`). |
+| `version` | `v0.4.0` | baseliner version to install, v0.3.0 or later (or `latest`). See [Install](#install). |
 | `config` | `baseliner.yaml` | Path to the config file. |
 | `format` | `both` | `json`, `table`, or `both`. |
 | `output-file` | — | Write JSON results here. |
@@ -79,6 +79,22 @@ precedence over the input's default:
 
 Scanning only this repo with the default token works, but `open-issues` then
 needs `permissions: issues: write` on the job.
+
+## Install
+
+The installer ships with the action, so the code that installs baseliner is
+pinned by the action ref your workflow uses (`@v1`, or a commit SHA), and
+nothing is fetched from a branch. Before installing, it checks that the
+release archive carries a build provenance attestation from baseliner's
+release workflow, at the requested tag, built on a GitHub-hosted runner
+(`gh attestation verify`), and that it matches the release's `checksums.txt`.
+If either check fails, it installs nothing.
+
+Releases before v0.3.0 carry no attestation, so the action no longer installs
+them. The runner needs `curl`, `jq` and a `gh` whose `attestation verify` has
+`--source-ref`; GitHub-hosted runners have all three. On GitHub Enterprise
+Server the release is still fetched from github.com, and the token is not
+sent there.
 
 ## Upgrading to baseliner v0.4.0
 
@@ -124,7 +140,9 @@ using this action:
   at once and the run exits 2, instead of a new one being opened every run.
 - **Reports and issues** show check messages as code.
 
-To stay on the previous release, set `version: v0.2.8`.
+To stay on the previous release, pin an action release before v1.8.0 and set
+`version: v0.2.8`; from v1.8.0 the action installs only releases with build
+provenance, v0.3.0 or later.
 See the [v0.3.0 release notes](https://github.com/baselinerhq/baseliner/releases/tag/v0.3.0).
 
 ## Privacy in public control repos

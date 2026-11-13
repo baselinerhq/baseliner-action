@@ -105,3 +105,65 @@ jobs:
         run: |
           echo "public-context 'yes' was accepted (step outcome: ${{ steps.bad_public_context.outcome }})"
           exit 1
+
+  # The installer verifies an archive's build provenance before installing it.
+  install:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    env:
+      GITHUB_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install the latest release
+        run: BINDIR="$RUNNER_TEMP/latest" VERSION=latest scripts/install.sh
+
+      # On GitHub Enterprise Server the runner's token belongs to that server,
+      # so it must not be sent to github.com, and the install must still work.
+      # Set in the shell: Actions does not let `env:` override GITHUB_* values.
+      - name: Install as a GHES runner would
+        run: |
+          GITHUB_SERVER_URL=https://ghes.invalid GITHUB_TOKEN=not-a-github-com-token \
+            BINDIR="$RUNNER_TEMP/ghes" VERSION=v0.4.0 scripts/install.sh
+
+      # The v0.4.0 archive has a real attestation, so these reach gh's
+      # cryptographic check: only the right workflow and tag may pass it.
+      - name: Verify provenance against workflow and tag
+        run: |
+          curl -fsSL -o "$RUNNER_TEMP/b.tar.gz" \
+            https://github.com/baselinerhq/baseliner/releases/download/v0.4.0/baseliner_linux_amd64.tar.gz
+          scripts/verify-provenance.sh "$RUNNER_TEMP/b.tar.gz" v0.4.0 .github/workflows/release.yml
+          refuse() {
+            local out
+            if out=$(scripts/verify-provenance.sh "$RUNNER_TEMP/b.tar.gz" "$1" "$2" 2>&1); then
+              echo "accepted tag $1, workflow $2"; return 1
+            fi
+            grep -q "is not attested as built by" <<<"$out" || { echo "$out"; echo "refused for another reason"; return 1; }
+          }
+          refuse v0.3.0 .github/workflows/release.yml
+          refuse v0.4.0 .github/workflows/ci.yml
+          echo "provenance checks passed"
+
+      # v0.2.8 matches its checksums.txt but has no attestation.
+      - name: Refuse a release without build provenance
+        run: |
+          set +e
+          out=$(BINDIR="$RUNNER_TEMP/old" VERSION=v0.2.8 scripts/install.sh 2>&1)
+          rc=$?
+          set -e
+          echo "$out"
+          [ "$rc" -ne 0 ] || { echo "v0.2.8 was installed"; exit 1; }
+          [ ! -e "$RUNNER_TEMP/old/baseliner" ] || { echo "a binary was left behind"; exit 1; }
+          grep -q "build provenance" <<<"$out" || { echo "refused for another reason"; exit 1; }
+
+      - name: Refuse a malformed version
+        run: |
+          set +e
+          out=$(VERSION='v0.4.0/../x' BINDIR="$RUNNER_TEMP/bad" scripts/install.sh 2>&1)
+          rc=$?
+          set -e
+          [ "$rc" -ne 0 ] || { echo "a malformed version was accepted"; exit 1; }
+          grep -q "version must be vX.Y.Z" <<<"$out" || { echo "$out"; echo "refused for another reason"; exit 1; }
